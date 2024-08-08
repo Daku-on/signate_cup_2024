@@ -350,3 +350,351 @@ def preprocessing(df: pd.DataFrame) -> pd.DataFrame:
     return df_preprocessed
 
 # ynb0123  担当分終了
+
+# Daku-on  担当分
+def preprocessing(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    dfのGenderからPitchSatisfactionScoreまでの前処理
+    - Gender
+        - 名寄せ
+        - maleなら0、femaleなら1にする
+        - カラム名をGender(is_male)に変更
+    - NumberOfPersonVisiting
+        - 変換不要
+    - NumberOfFollowups
+        - nanを0に変換（0が値として存在していないため、0の時にはnanが入ると仮定している）
+        - 100, 200, ..., 600を1, 2, ..., 6に変更（%がついて100倍されていると仮定している）
+    - ProductPitched
+        - 全て小文字に変換
+        - '|'をlに変換
+        - アルファベットでない文字をアルファベットに変換
+        - 全角を半角に変換
+    - PreferredPropertyStar
+        - 変換不要
+    - NumberOfTrips
+        - 「年4回」「5」「'3'」など、intとstrが混ざっているため、全てintに変換
+    - Passport
+        - 変換不要
+    - PitchSatisfactionScore
+        - 変換不要
+    
+    Parameters
+    ---------------
+    df: pd.DataFrame
+        学習データ or テストデータ or 学習＋テストデータ
+    
+    Returns
+    ---------------
+    df_preprocessed: pd.DataFrame
+        前処理済dataframe
+    """
+    # --------------- 準備 ---------------
+
+    # 入力のdataframeが加工されないようにコピーを取る
+    df_preprocessed = df.copy()
+    # 全角を半角にする関数
+    def zenkaku2hankaku(text):
+        return unicodedata.normalize('NFKC', text)
+
+    # --------------- Gender ---------------
+
+    # 全角を半角に
+    df_preprocessed['Gender'] = df_preprocessed['Gender'].apply(zenkaku2hankaku)
+    # 大文字を小文字に
+    df_preprocessed['Gender'] = df_preprocessed['Gender'].str.lower()
+    # 男性なら0、女性なら1とする
+    df_preprocessed['Gender'] = np.where(df_preprocessed['Gender'].str.contains('f'), 0, 1)
+    # カラム名をGender(is_male)に変更
+    df_preprocessed = df_preprocessed.rename(columns={'Gender': 'Gender(is_male)'})
+
+    # --------------- NumberOfFollowups ---------------
+
+    df_preprocessed['NumberOfFollowups'] = df_preprocessed['NumberOfFollowups'].replace(
+        {
+            np.nan: 0,
+            100: 1,
+            200: 2,
+            300: 3,
+            400: 4,
+            500: 5,
+            600: 6
+        }
+    )
+
+    # --------------- ProductPitched ---------------
+
+    # 変な文字をアルファベットに
+    conv2alphabet_dict = {
+        'α': 'a',
+        'Α': 'a',
+        'в': 'b',
+        'β': 'b',
+        '𐊡': 'b',
+        'ς': 'c',
+        'ϲ': 'c',
+        'с': 'c',
+        '𝔡': 'd',
+        'ᗞ': 'd',
+        'ꭰ': 'd',
+        'ε': 'e',
+        'ı': 'i',
+        '|': 'l',
+        'ո': 'n',
+        'տ': 's',
+        'ꓢ': 's',
+        'ѕ': 's',
+        '×': 'x'
+    }
+    def conv2alphabet(text, replacements):
+        t = str.maketrans(replacements)
+        return text.translate(t)
+    df_preprocessed['ProductPitched'] = df_preprocessed['ProductPitched'].apply(
+        lambda x: conv2alphabet(x, conv2alphabet_dict)
+    )
+    # 全角を半角に
+    df_preprocessed['ProductPitched'] = df_preprocessed['ProductPitched'].apply(zenkaku2hankaku)
+    # 大文字を小文字に
+    df_preprocessed['ProductPitched'] = df_preprocessed['ProductPitched'].str.lower()
+    # なぜか変換できないものたちをパワーで変換
+    conv_dict = {
+        'вasic': 'basic',
+        'ѕuper deluxe': 'super deluxe',
+        'baտic': 'basic',
+        'ꭰeluxe': 'deluxe',
+        'βasic': 'basic',
+        'տuper deluxe': 'super deluxe',
+        'տtandard': 'standard',
+        'standarꭰ': 'standard',
+        'basiс': 'basic',
+        'dεluxε': 'deluxe',
+        'basιc': 'basic',
+        'super ꭰeluxe': 'super deluxe',
+        'deluxε': 'deluxe',
+        'ѕtandard': 'standard',
+        'super dεluxe': 'super deluxe',
+        'βasiс': 'basic',
+        'supεr ꭰeluxe': 'super deluxe',
+        'basιс': 'basic',
+        'baѕic': 'basic'
+    }
+    df_preprocessed['ProductPitched'] = df_preprocessed['ProductPitched'].replace(conv_dict)
+
+    # --------------- NumberOfTrips ---------------
+
+    # 日本語をintに
+    conv2ntrips = {
+        '年に1回': 1,
+        '年に2回': 2,
+        '年に3回': 3,
+        '年に4回': 4,
+        '年に5回': 5,
+        '年に6回': 6,
+        '年に7回': 7,
+        '年に8回': 8,
+        '半年に1回': 2,
+        '四半期に1回': 4
+    }
+    df_preprocessed['NumberOfTrips'] = df_preprocessed['NumberOfTrips'].replace(conv2ntrips)
+    # nanをintに
+    df_preprocessed['NumberOfTrips'] = df_preprocessed['NumberOfTrips'].replace({np.nan: 0})
+    # strをintに
+    df_preprocessed['NumberOfTrips'] = df_preprocessed['NumberOfTrips'].astype(int)
+
+    return df_preprocessed
+
+
+def extract_and_convert_to_numeric(
+    df: pd.DataFrame, 
+    column_name: str, 
+    new_column_name: str
+) -> pd.DataFrame:
+    """
+    指定されたカラムから数字と「万」を抽出し、1万倍して新しいカラムに保存する。
+    正規表現にマッチしない場合、そのインデックスと値を記録する。
+
+    Args:
+        df (pd.DataFrame): 入力データフレーム
+        column_name (str): 元のカラム名
+        new_column_name (str): 結果を保存する新しいカラム名
+
+    Returns:
+        pd.DataFrame: 処理結果が保存された新しいカラムが追加されたデータフレーム
+        list: 正規表現にマッチしなかったユニークな値のリスト
+    """
+    unmatched_values = []
+
+    def convert_to_number(
+        text: object, index: int
+    ) -> int:
+        if text is None or pd.isna(text):
+            return np.nan
+        text = str(text)
+        # 正規表現で「万」と数字を含む部分を抽出
+        match = re.search(r"(\d+(\.\d+)?)(万)?", text)
+        if not match:
+            unmatched_values.append((index, text))
+            return None
+        number_str, _, unit = match.groups()
+        number = float(number_str)
+        if unit == "万":
+            number *= 10000
+        return int(number)
+
+    # 各レコードに対して処理を行い、新しいカラムに保存
+    df[new_column_name] = [
+        convert_to_number(value, idx) 
+        for idx, value in enumerate(df[column_name])
+    ]
+    df[new_column_name] = df[new_column_name].astype(np.float32)
+
+    if len(unmatched_values) == 0:
+        return df, []
+    else:
+        # 正規表現にマッチしなかったユニークな値をリストにして返す
+        print("there are unmatched values in the column: {}".format(column_name))
+        unique_unmatched_values = list({value for _, value in unmatched_values})
+        print(unique_unmatched_values)
+
+        return df, unique_unmatched_values
+
+
+def customer_info_preprocess(
+    df: pd.DataFrame,  # 入力のデータフレーム
+    column_name: str,  # 処理対象のカラム名
+) -> pd.DataFrame:
+    """
+    各レコードに対して、指定されたカラムの文字列を処理し、
+    各単語を条件に基づいて新しいカラムに分類する。
+    Args:
+        df (pd.DataFrame): 処理対象のデータフレーム
+        column_name (str): 対象カラム名
+    Returns:
+        pd.DataFrame: 処理結果を含むデータフレーム
+    """
+    # 各レコードを処理
+    for index, row in df.iterrows():
+        # 句読点やコロン、改行などを半角スペースに変換
+        cleaned_text = re.sub(r"[、。・：；,.;:?!/／\n]", " ", str(row[column_name]))
+
+        # 単語に分割
+        words = cleaned_text.split()
+
+        # 各単語に対して処理を実施
+        marriage_history = " ".join([word for word in words if "婚" in word or "独" in word])
+        car = " ".join([word for word in words if "車" in word])
+        children = " ".join([word for word in words if "婚" not in word and "独" not in word and "車" not in word])
+
+        # 各レコードに新しいカラムを追加
+        df.at[index, "marriage_history"] = marriage_history
+        df.at[index, "car"] = car
+        df.at[index, "children"] = children
+
+    # 各カラムの表記揺れを修正
+    def dict_replace_function(
+        text: str,
+        replace_dict: dict
+    ) -> str:
+        if text in replace_dict:
+            return str(replace_dict[text])
+        else:
+            raise ValueError(f"'{text}' is not found in the replacement dictionary.")
+
+    # car, childrenカラムの各レコードに対して置き換え処理を実施
+    # car辞書の作成
+    car_replace_dict = {
+        "車未所持": 0,
+        "自動車未所有": 0,
+        "車保有なし": 0,
+        "乗用車なし": 0,
+        "自家用車なし": 0,
+        "車なし": 0,
+        "車あり": 1,
+        "車所持": 1,
+        "自家用車あり": 1,
+        "車保有": 1,
+        "乗用車所持": 1,
+        "自動車所有": 1,
+    }
+    # children辞書の作成
+    children_replace_dict = {
+        "子供なし": 0,
+        "子供無し": 0,
+        "無子": 0,
+        "子供ゼロ": 0,
+        "非育児家庭": 0,
+        "子育て状況不明": np.nan,
+        "子の数不詳": np.nan,
+        "子供の数不明": np.nan,
+        "こども1人": 1,
+        "1児": 1,
+        "子供1人": 1,
+        "子供有り(1人)": 1,
+        "子供有り 1人": 1,
+        "こども2人": 2,
+        "2児": 2,
+        "子供2人": 2,
+        "子供有り(2人)": 2,
+        "こども3人": 3,
+        "3児": 3,
+        "子供3人": 3,
+        "子供有り 2人": 2,
+        "子供有り 3人": 3,
+        "子供有り(3人)": 3,
+        "わからない": np.nan,
+        "不明": np.nan,
+    }
+
+    # データフレームの対象カラムに適用
+    df["car"] = df["car"].apply(dict_replace_function, replace_dict=car_replace_dict)
+    df["children"] = df["children"].apply(dict_replace_function, replace_dict=children_replace_dict)
+
+    return df
+
+
+def preprocess_for_last_3_cols(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    データフレームに対して前処理を行う。
+
+    Args:
+        df (pd.DataFrame): 前処理を行うデータフレーム
+
+    Returns:
+        pd.DataFrame: 前処理後のデータフレーム
+    """
+
+    # カラムごとの前処理
+    df, invalid_values = convert_fullwidth_to_halfwidth_and_extract_invalid(df, "Designation")
+    df, unmatched_values = extract_and_convert_to_numeric(df, "MonthlyIncome", "MonthlyIncome_numeric")
+    df = customer_info_preprocess(df, "customer_info")
+
+    return df
+
+# Daku-on  担当分終了
+
+
+def preprocess_total(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    dfの前処理
+    """
+    train_df = preprocess_data(
+        train_df,
+        test_df,
+        target="train"
+    )
+    test_df = preprocess_data(
+        train_df,
+        test_df,
+        target="test"
+    )
+    train_df = preprocessing(train_df)
+    test_df = preprocessing(test_df)
+
+    train_df = preprocess_for_last_3_cols(train_df)
+    test_df = preprocess_for_last_3_cols(test_df)
+
+    return train_df, test_df
