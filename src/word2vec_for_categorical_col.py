@@ -81,11 +81,33 @@ def concatenate_columns(
 def word2vec_for_customer_info(
     train_df: pd.DataFrame,
     test_df: pd.DataFrame,
+    n_components: int = 3,
 ) -> pd.DataFrame:
+    """
+    use after preprocessing_for_all_models.py
+    """
 
-    train_df = concatenate_columns(train_df, ["marriage_history", "car", "children"], "customer_info_concat")
-    test_df = concatenate_columns(test_df, ["marriage_history", "car", "children"], "customer_info_concat")
-    train_df = add_tfidf_features(train_df, "customer_info_concat", max_features=40, n_components=3)
-    test_df = add_tfidf_features(test_df, "customer_info_concat", max_features=40, n_components=None)
-    
+    train_df = concatenate_columns(
+        train_df,
+        ["marriage_history", "car", "children"],
+        "customer_info_concat"
+    )
+    test_df = concatenate_columns(
+        test_df,
+        ["marriage_history", "car", "children"],
+        "customer_info_concat"
+    )
+    train_df = add_tfidf_features(
+        train_df,
+        "customer_info_concat",
+        max_features=40,  # I know 40 is at most for this case
+        n_components=n_components
+    )
+    test_df = add_tfidf_features(
+        test_df,
+        "customer_info_concat",
+        max_features=40,
+        n_components=n_components
+    )
+
     return train_df, test_df
