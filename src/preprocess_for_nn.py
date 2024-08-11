@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler, MinMaxScaler
 import preprocess_for_all_models as my_preprocess
 
 # 各種定数
@@ -12,7 +12,7 @@ NUMERIC_COLUMNS = [
     "MonthlyIncome_numeric", "children"
 ]
 HIERARCHICAL_COLUMNS = ["Occupation", "ProductPitched", "Designation"]
-CATEGORICAL_COLUMNS = ["marriage_history"]
+CATEGORICAL_COLUMNS = ["TypeofContact", "marriage_history"]
 
 # Ordinal Encodingで使用する順序リスト
 OCCUPATION_ORDER = ["Salaried", "Small Business", "Large Business"]
@@ -44,7 +44,7 @@ def preprocess_data(
 
     # -1で欠損値を補完し、新しいデータフレームを作成
     for df in [train_df, test_df]:
-        df["children"] = df["children"].fillna(-1)
+        df["TypeofContact"] = df["TypeofContact"].fillna(-1)
         df["MonthlyIncome_numeric"] = df["MonthlyIncome_numeric"].fillna(df["MonthlyIncome_numeric"].median())
 
     # Ordinal Encodingの実施
@@ -58,14 +58,22 @@ def preprocess_data(
     test_df[HIERARCHICAL_COLUMNS] = test_df_encoded
 
     # one-hot encodingの実施
-    train_df = pd.get_dummies(train_df, columns=CATEGORICAL_COLUMNS)
-    test_df = pd.get_dummies(test_df, columns=CATEGORICAL_COLUMNS)
+    train_df = pd.get_dummies(train_df, columns=CATEGORICAL_COLUMNS, dtype='float32')
+    test_df = pd.get_dummies(test_df, columns=CATEGORICAL_COLUMNS, dtype='float32')
 
     # 数値データのスケーリング
-    train_scaler = StandardScaler()
-    test_scaler = StandardScaler()
+    train_scaler = MinMaxScaler()
+    test_scaler = MinMaxScaler()
 
     train_df[NUMERIC_COLUMNS] = train_scaler.fit_transform(train_df[NUMERIC_COLUMNS])
     test_df[NUMERIC_COLUMNS] = test_scaler.fit_transform(test_df[NUMERIC_COLUMNS])  # それぞれ独自にスケーリング
+
+    # childrenだけなぜか埋まっていないので欠損値を-1で埋める
+    for df in [train_df, test_df]:
+        df["children"] = df["children"].fillna(-1)
+
+    # 全てのカラムを float32 型に変換
+    train_df = train_df.astype('float32')
+    test_df = test_df.astype('float32')
 
     return train_df, test_df
