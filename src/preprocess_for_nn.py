@@ -3,7 +3,7 @@ from sklearn.preprocessing import OrdinalEncoder, StandardScaler, MinMaxScaler
 import preprocess_for_all_models as my_preprocess
 
 # 各種定数
-DROP_COLUMNS = ["id", "MonthlyIncome", "customer_info"]
+DROP_COLUMNS = ["MonthlyIncome", "customer_info"]
 NUMERIC_COLUMNS = [
     "CityTier", "DurationOfPitch", "Occupation",
     "NumberOfPersonVisiting", "NumberOfFollowups",
