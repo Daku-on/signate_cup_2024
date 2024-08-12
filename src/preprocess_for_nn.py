@@ -36,18 +36,23 @@ def preprocess_data(
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: 加工済みの学習データとテストデータ
     """
-    # すべてのモデルに共通する前処理を実施
-    train_df, test_df = my_preprocess.preprocess_total(train_df, test_df)
+    # # すべてのモデルに共通する前処理を実施
+    # train_df, test_df = my_preprocess.preprocess_total(train_df, test_df)
 
-    # word2vecを使用してカテゴリカル変数をエンベディング
-    train_df, test_df = my_word2vec.word2vec_for_customer_info(
-        train_df,
-        test_df
-    )
+    # # word2vecを使用してカテゴリカル変数をエンベディング
+    # train_df, test_df = my_word2vec.word2vec_for_customer_info(
+        # train_df,
+        # test_df
+    # )
 
     # 不要なカラムを削除
-    train_df = train_df.drop(columns=DROP_COLUMNS)
-    test_df = test_df.drop(columns=DROP_COLUMNS)
+    for col in DROP_COLUMNS:
+        try:
+            train_df = train_df.drop(columns=col)
+            test_df = test_df.drop(columns=col)
+        except Exception as drop_error:
+            print(drop_error)
+            pass
 
     # -1で欠損値を補完し、新しいデータフレームを作成
     for df in [train_df, test_df]:
