@@ -97,9 +97,16 @@ class SchedulerBuilder:
         gamma: float = 0.1
     ):
         if scheduler_type == "StepLR":
-            return optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=gamma)
+            return optim.lr_scheduler.StepLR(
+                self.optimizer,
+                step_size=step_size,
+                gamma=gamma
+            )
         elif scheduler_type == "ExponentialLR":
-            return optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=gamma)
+            return optim.lr_scheduler.ExponentialLR(
+                self.optimizer,
+                gamma=gamma
+            )
         elif scheduler_type == "ReduceLROnPlateau":
             return optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'min')
         elif scheduler_type == "None":

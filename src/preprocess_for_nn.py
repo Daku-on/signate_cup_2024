@@ -1,9 +1,10 @@
 import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler, MinMaxScaler
 import preprocess_for_all_models as my_preprocess
+import word2vec_for_categorical_col as my_word2vec
 
 # 各種定数
-DROP_COLUMNS = ["MonthlyIncome", "customer_info"]
+DROP_COLUMNS = ["MonthlyIncome", "customer_info", "customer_info_concat"]
 NUMERIC_COLUMNS = [
     "CityTier", "DurationOfPitch", "Occupation",
     "NumberOfPersonVisiting", "NumberOfFollowups",
@@ -37,6 +38,12 @@ def preprocess_data(
     """
     # すべてのモデルに共通する前処理を実施
     train_df, test_df = my_preprocess.preprocess_total(train_df, test_df)
+
+    # word2vecを使用してカテゴリカル変数をエンベディング
+    train_df, test_df = my_word2vec.word2vec_for_customer_info(
+        train_df,
+        test_df
+    )
 
     # 不要なカラムを削除
     train_df = train_df.drop(columns=DROP_COLUMNS)
