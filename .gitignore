@@ -168,3 +168,6 @@ data/
 models/
 submission*/
 *.csv
+
+# cloned data
+Holiday-Package-Prediction/

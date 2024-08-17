@@ -18,6 +18,7 @@ CATEGORICAL_COLUMNS = ["TypeofContact", "marriage_history"]
 # Ordinal Encodingで使用する順序リスト
 OCCUPATION_ORDER = ["Salaried", "Small Business", "Large Business"]
 PRODUCT_PITCHED_ORDER = ["basic", "standard", "deluxe", "super deluxe", "king"]
+# PRODUCT_PITCHED_ORDER = ["basic", "standard", "deluxe", "king", "super deluxe"]
 DESIGNATION_ORDER = ["executive", "manager", "senior_manager", "avp", "vp"]
 CATEGORIES_ORDER = [OCCUPATION_ORDER, PRODUCT_PITCHED_ORDER, DESIGNATION_ORDER]
 
